@@ -31,9 +31,11 @@ app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
 
 if (process.env.NODE_ENV === "production") {
+  // Serve static files from frontend/dist
   app.use(express.static(path.join(__dirname, "../../frontend/dist")));
 
-  app.get("/:path(*)", (req, res) => {
+  // Catch-all route for SPA - use regex to avoid path-to-regexp issues
+  app.get(/.*/, (req, res) => {
     res.sendFile(path.join(__dirname, "../../frontend/dist/index.html"));
   });
 }
