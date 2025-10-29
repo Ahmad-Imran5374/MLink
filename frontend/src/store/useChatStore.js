@@ -23,24 +23,40 @@ export const useChatStore = create((set, get) => ({
     }
   },
 
-  subscribeToMessages: ()=>{
-    const {selectedUser} = get();
-    if(!selectedUser) return;
+  subscribeToMessages: () => {
+    const { selectedUser } = get();
+    if (!selectedUser) return;
 
     const socket = useAuthStore.getState().socket;
 
-    socket.on("newMessage",(newMessage)=>{
-      const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser._id;
-      if(!isMessageSentFromSelectedUser) return;
+    socket.on("newMessage", (newMessage) => {
+      const isMessageSentFromSelectedUser =
+        newMessage.senderId === selectedUser._id;
+      if (!isMessageSentFromSelectedUser) return;
       set({
-        messages:[...get().messages,newMessage]
+        messages: [...get().messages, newMessage],
       });
-    })
+    });
+
+    socket.on("messagesSeen", (data) => {
+      const { messages } = get();
+      const updatedMessages = messages.map((message) => {
+        if (
+          message.senderId === useAuthStore.getState().authUser._id &&
+          message.recieverId === data.userId
+        ) {
+          return { ...message, seen: true, seenAt: new Date() };
+        }
+        return message;
+      });
+      set({ messages: updatedMessages });
+    });
   },
 
-  unsubscribeFromMessages: ()=>{
+  unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
     socket.off("newMessage");
+    socket.off("messagesSeen");
   },
 
   getMessages: async (userId) => {
@@ -67,5 +83,13 @@ export const useChatStore = create((set, get) => ({
       toast.error(error.response.data.message);
     }
   },
+  markMessagesAsSeen: async (userId) => {
+    try {
+      await axiosInstance.put(`/messages/seen/${userId}`);
+    } catch (error) {
+      console.error("Error marking messages as seen:", error);
+    }
+  },
+
   setSelectedUser: async (selectedUser) => set({ selectedUser }),
 }));
