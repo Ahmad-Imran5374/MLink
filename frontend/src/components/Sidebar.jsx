@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useChatStore } from "../store/useChatStore";
 import SidebarSkeleton from "./skeletons/SidebarSkeleton";
 import { Users } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
+import { formatMessageTime } from "../lib/utils";
 
 function Sidebar() {
   const { getUsers, users, setSelectedUser, selectedUser, isUsersLoading } =
@@ -20,13 +21,14 @@ function Sidebar() {
 
   if (isUsersLoading) return <SidebarSkeleton />;
   return (
-    <aside className="h-full w-20 lg:w-72 border-r border-base-300 flex flex-col transition-all duration-200">
-      <div className="border-b border-base-300 w-full">
-        <div className="flex items-center border-b border-base-300 gap-2 p-5">
+    <aside className="h-full w-full lg:w-72 lg:border-r border-base-300 flex flex-col transition-all duration-200">
+      <div className="w-full">
+        <div className="flex items-center gap-2 p-5">
           <Users className="size-6" />
-          <span className="font-medium hidden lg:block">Contacts</span>
+          <span className="font-medium hidden sm:block">Contacts</span>
         </div>
-        <div className="mt-3 ml-5 hidden lg:flex items-center gap-2">
+        <div className="border-b border-base-300"></div>
+        <div className="px-5 py-3">
           <label className="cursor-pointer flex items-center gap-2">
             <input
               type="checkbox"
@@ -34,10 +36,13 @@ function Sidebar() {
               onChange={(e) => setShowOnlineOnly(e.target.checked)}
             />
             <span className="text-sm">Show online only</span>
-          <span className="text-xs text-zinc-500">{onlineUsers.length - 1 } online</span>
+            <span className="text-xs text-zinc-500">
+              ({onlineUsers.length - 1} online)
+            </span>
           </label>
         </div>
-        <div className="overflow-y-auto w-full py-3">
+        <div className="border-b border-base-300"></div>
+        <div className="overflow-y-auto w-full">
           {filteredUsers.map((user) => (
             <button
               key={user._id}
@@ -62,11 +67,46 @@ function Sidebar() {
                 )}
               </div>
 
-              {/* User info - only visible on larger screens */}
-              <div className="hidden lg:block text-left min-w-0">
-                <div className="font-medium truncate">{user.fullName}</div>
-                <div className="text-sm text-zinc-400">
-                  {onlineUsers.includes(user._id) ? "Online" : "Offline"}
+              {/* User info */}
+              <div className="block text-left min-w-0 flex-1 ml-3 lg:ml-0">
+                <div className="flex items-center justify-between">
+                  <div className="font-medium truncate">{user.fullName}</div>
+                  {user.lastMessage && (
+                    <div className="text-xs text-zinc-400 ml-2 hidden sm:block">
+                      {formatMessageTime(user.lastMessage.createdAt)}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="text-sm text-zinc-400 truncate flex-1">
+                    {user.lastMessage ? (
+                      user.lastMessage.isDeleted ? (
+                        <span className="italic">Message deleted</span>
+                      ) : (
+                        <span>
+                          {user.lastMessage.text ||
+                            (user.lastMessage.image && "📷 Photo") ||
+                            (user.lastMessage.video && "🎥 Video")}
+                        </span>
+                      )
+                    ) : (
+                      <span>
+                        {onlineUsers.includes(user._id) ? "Online" : "Offline"}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {user.lastMessage && (
+                      <div className="text-xs text-zinc-400 sm:hidden">
+                        {formatMessageTime(user.lastMessage.createdAt)}
+                      </div>
+                    )}
+                    {user.unreadCount > 0 && (
+                      <div className="bg-primary text-primary-content text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
+                        {user.unreadCount > 99 ? "99+" : user.unreadCount}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </button>

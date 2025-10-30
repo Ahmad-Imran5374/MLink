@@ -12,6 +12,7 @@ import {
   Trash2,
   Reply,
   ChevronDown,
+  MoreVertical,
   Image as ImageIcon,
   Video as VideoIcon,
 } from "lucide-react";
@@ -32,7 +33,19 @@ function ChatContainer() {
   const [previewImage, setPreviewImage] = useState(null);
   const [previewVideo, setPreviewVideo] = useState(null);
   const [highlightedMessage, setHighlightedMessage] = useState(null);
+  const [failedMedia, setFailedMedia] = useState(new Set());
   const messageRefs = useRef({});
+
+  // Handle media loading errors
+  const handleMediaError = (messageId, mediaType) => {
+    setFailedMedia((prev) => new Set([...prev, `${messageId}-${mediaType}`]));
+  };
+
+  // Check if media failed to load
+  const isMediaFailed = (messageId, mediaType) => {
+    return failedMedia.has(`${messageId}-${mediaType}`);
+  };
+
   useEffect(() => {
     getMessages(selectedUser._id);
     markMessagesAsSeen(selectedUser._id);
@@ -75,24 +88,6 @@ function ChatContainer() {
   }, [selectedUser, markMessagesAsSeen]);
 
   const messageEndRef = useRef();
-
-  // Helper function to get media duration
-  const getMediaDuration = (url, type) => {
-    return new Promise((resolve) => {
-      const element =
-        type === "video"
-          ? document.createElement("video")
-          : document.createElement("audio");
-      element.src = url;
-      element.onloadedmetadata = () => {
-        const duration = Math.floor(element.duration);
-        const minutes = Math.floor(duration / 60);
-        const seconds = duration % 60;
-        resolve(`${minutes}:${seconds.toString().padStart(2, "0")}`);
-      };
-      element.onerror = () => resolve("0:00");
-    });
-  };
 
   // Handle clicking on reply preview to scroll and highlight original message
   const handleReplyClick = (replyToId) => {
@@ -143,55 +138,6 @@ function ChatContainer() {
               </div>
 
               <div className="relative group">
-                {/* Message menu - only show for non-deleted messages */}
-                {!message.isDeleted && (
-                  <div
-                    className={`absolute -top-0  ${message.senderId === authUser._id ? "right-2" : "left-2"} opacity-0 group-hover:opacity-100 bg-transparent transition-all duration-300 z-10`}
-                  >
-                    <div className="dropdown dropdown-end">
-                      <div
-                        tabIndex={0}
-                        role="button"
-                        className="flex items-center justify-center w-7 h-7 bg-base-100/95 hover:bg-base-100 border border-base-300/50 shadow-lg backdrop-blur-md rounded-full transition-all duration-200 hover:scale-110"
-                      >
-                        <ChevronDown
-                          size={14}
-                          className="text-base-content/80 hover:text-base-content transition-colors"
-                        />
-                      </div>
-                      <ul
-                        tabIndex={0}
-                        className="dropdown-content menu bg-base-100/95 backdrop-blur-md rounded-2xl w-44 p-2 shadow-2xl border border-base-300/50 mt-2"
-                      >
-                        <li>
-                          <button
-                            onClick={() => setReplyTo(message)}
-                            className="text-sm py-3 px-4 hover:bg-base-200/70 rounded-xl flex items-center gap-3 transition-all duration-200"
-                          >
-                            <Reply size={16} className="text-primary" />
-                            <span className="font-medium">Reply</span>
-                          </button>
-                        </li>
-                        {message.senderId === authUser._id && (
-                          <li>
-                            <button
-                              onClick={() => {
-                                if (window.confirm("Delete this message?")) {
-                                  deleteMessage(message._id);
-                                }
-                              }}
-                              className="text-sm py-3 px-4 hover:bg-error/10 text-error rounded-xl flex items-center gap-3 transition-all duration-200"
-                            >
-                              <Trash2 size={16} />
-                              <span className="font-medium">Delete</span>
-                            </button>
-                          </li>
-                        )}
-                      </ul>
-                    </div>
-                  </div>
-                )}
-
                 <div
                   className={`${
                     message.senderId === authUser._id
@@ -209,13 +155,73 @@ function ChatContainer() {
                     paddingBottom: "8px",
                   }}
                 >
+                  {/* Message menu - only show for non-deleted messages */}
+                  {!message.isDeleted && (
+                    <div
+                      className={`absolute top-1 right-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 z-10`}
+                    >
+                      <div className="dropdown dropdown-end">
+                        <div
+                          tabIndex={0}
+                          role="button"
+                          className={`flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200 hover:scale-110 ${
+                            message.senderId === authUser._id
+                              ? "bg-primary-content/20 hover:bg-primary-content/30 text-primary-content"
+                              : "bg-base-content/80  text-white"
+                          }`}
+                        >
+                          {/* Show 3 dots on mobile, chevron down on desktop */}
+                          <MoreVertical
+                            size={14}
+                            className="opacity-70 hover:opacity-100 transition-opacity lg:hidden"
+                          />
+                          <ChevronDown
+                            size={14}
+                            className="opacity-70 hover:opacity-100 transition-opacity hidden lg:block"
+                          />
+                        </div>
+                        <ul
+                          tabIndex={0}
+                          className="dropdown-content menu bg-base-100/95 backdrop-blur-md rounded-2xl w-44 p-2 shadow-2xl border border-base-300/50 mt-2"
+                        >
+                          <li>
+                            <button
+                              onClick={() => setReplyTo(message)}
+                              className="text-sm py-3 px-4 hover:bg-base-200/70 rounded-xl flex items-center gap-3 transition-all duration-200"
+                            >
+                              <Reply size={16} className="text-primary" />
+                              <span className="font-medium">Reply</span>
+                            </button>
+                          </li>
+                          {message.senderId === authUser._id && (
+                            <li>
+                              <button
+                                onClick={() => {
+                                  if (window.confirm("Delete this message?")) {
+                                    deleteMessage(message._id);
+                                  }
+                                }}
+                                className="text-sm py-3 px-4 hover:bg-error/10 text-error rounded-xl flex items-center gap-3 transition-all duration-200"
+                              >
+                                <Trash2 size={16} />
+                                <span className="font-medium">Delete</span>
+                              </button>
+                            </li>
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Reply preview */}
                   {message.replyTo && (
                     <div
-                      onClick={() =>
-                        !message.replyTo.isDeleted &&
-                        handleReplyClick(message.replyTo._id)
-                      }
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!message.replyTo.isDeleted) {
+                          handleReplyClick(message.replyTo._id);
+                        }
+                      }}
                       className={`mb-2 p-2 rounded-lg border-l-3 ${
                         message.senderId === authUser._id
                           ? "bg-primary-content/20 border-primary-content"
@@ -233,21 +239,39 @@ function ChatContainer() {
                           <span>This message was deleted</span>
                         </div>
                       ) : (
-                        <div className="text-xs opacity-90 line-clamp-2 break-words flex items-start gap-1.5">
-                          {message.replyTo.image && (
-                            <div className="flex items-center gap-1 font-medium">
-                              <ImageIcon size={14} />
-                              <span>Photo</span>
-                            </div>
-                          )}
-                          {message.replyTo.video && (
-                            <div className="flex items-center gap-1 font-medium">
-                              <VideoIcon size={14} />
-                              <span>Video</span>
-                            </div>
-                          )}
+                        <div className="text-xs opacity-90 line-clamp-2 break-words">
+                          {message.replyTo.image &&
+                            !message.replyTo.text &&
+                            !message.replyTo.video && (
+                              <div className="flex items-center gap-1 font-medium">
+                                <ImageIcon size={14} />
+                                <span>Photo</span>
+                              </div>
+                            )}
+                          {message.replyTo.video &&
+                            !message.replyTo.text &&
+                            !message.replyTo.image && (
+                              <div className="flex items-center gap-1 font-medium">
+                                <VideoIcon size={14} />
+                                <span>Video</span>
+                              </div>
+                            )}
                           {message.replyTo.text && (
-                            <span>{message.replyTo.text}</span>
+                            <span className="block">
+                              {message.replyTo.text}
+                            </span>
+                          )}
+                          {message.replyTo.image && message.replyTo.text && (
+                            <div className="flex items-center gap-1 font-medium mt-1">
+                              <ImageIcon size={12} />
+                              <span className="text-xs opacity-70">Photo</span>
+                            </div>
+                          )}
+                          {message.replyTo.video && message.replyTo.text && (
+                            <div className="flex items-center gap-1 font-medium mt-1">
+                              <VideoIcon size={12} />
+                              <span className="text-xs opacity-70">Video</span>
+                            </div>
                           )}
                         </div>
                       )}
@@ -266,25 +290,45 @@ function ChatContainer() {
                         <div
                           className={`${message.text || message.video ? "mb-1" : ""} -mx-1`}
                         >
-                          <img
-                            src={message.image}
-                            alt="attachment"
-                            className="sm:max-w-[200px] rounded-lg cursor-pointer hover:opacity-80 transition-opacity w-full"
-                            onClick={() => setPreviewImage(message.image)}
-                          />
+                          {isMediaFailed(message._id, "image") ? (
+                            <div className="sm:max-w-[200px] rounded-lg bg-base-300/50 border border-base-300 p-4 flex items-center gap-2 text-sm opacity-70">
+                              <ImageIcon size={16} />
+                              <span>Image deleted</span>
+                            </div>
+                          ) : (
+                            <img
+                              src={message.image}
+                              alt="attachment"
+                              className="sm:max-w-[200px] rounded-lg cursor-pointer hover:opacity-80 transition-opacity w-full"
+                              onClick={() => setPreviewImage(message.image)}
+                              onError={() =>
+                                handleMediaError(message._id, "image")
+                              }
+                            />
+                          )}
                         </div>
                       )}
                       {message.video && (
                         <div
                           className={`${message.text || message.image ? "mb-1" : ""} -mx-1`}
                         >
-                          <video
-                            src={message.video}
-                            className="sm:max-w-[250px] rounded-lg w-full cursor-pointer hover:opacity-80 transition-opacity"
-                            controls
-                            preload="metadata"
-                            onClick={() => setPreviewVideo(message.video)}
-                          />
+                          {isMediaFailed(message._id, "video") ? (
+                            <div className="sm:max-w-[250px] rounded-lg bg-base-300/50 border border-base-300 p-4 flex items-center gap-2 text-sm opacity-70">
+                              <VideoIcon size={16} />
+                              <span>Video deleted</span>
+                            </div>
+                          ) : (
+                            <video
+                              src={message.video}
+                              className="sm:max-w-[250px] rounded-lg w-full cursor-pointer hover:opacity-80 transition-opacity"
+                              controls
+                              preload="metadata"
+                              onClick={() => setPreviewVideo(message.video)}
+                              onError={() =>
+                                handleMediaError(message._id, "video")
+                              }
+                            />
+                          )}
                         </div>
                       )}
                       {message.text && (

@@ -25,25 +25,55 @@ export const useChatStore = create((set, get) => ({
 
   subscribeToMessages: () => {
     const { selectedUser } = get();
-    if (!selectedUser) return;
-
     const socket = useAuthStore.getState().socket;
 
     socket.on("newMessage", (newMessage) => {
       const isMessageSentFromSelectedUser =
-        newMessage.senderId === selectedUser._id;
-      if (!isMessageSentFromSelectedUser) return;
+        newMessage.senderId === selectedUser?._id;
 
-      set({
-        messages: [...get().messages, newMessage],
+      if (isMessageSentFromSelectedUser) {
+        set({
+          messages: [...get().messages, newMessage],
+        });
+
+        // Auto-mark as seen if user is viewing the chat
+        if (!document.hidden) {
+          setTimeout(() => {
+            get().markMessagesAsSeen(selectedUser._id);
+          }, 100);
+        }
+      }
+
+      // Update users list with new last message and unread count
+      const { users } = get();
+      const updatedUsers = users.map((user) => {
+        if (user._id === newMessage.senderId) {
+          return {
+            ...user,
+            lastMessage: {
+              text: newMessage.text,
+              image: newMessage.image,
+              video: newMessage.video,
+              senderId: newMessage.senderId,
+              createdAt: newMessage.createdAt,
+              isDeleted: newMessage.isDeleted,
+            },
+            unreadCount: isMessageSentFromSelectedUser
+              ? user.unreadCount
+              : (user.unreadCount || 0) + 1,
+          };
+        }
+        return user;
       });
 
-      // Auto-mark as seen if user is viewing the chat
-      if (!document.hidden) {
-        setTimeout(() => {
-          get().markMessagesAsSeen(selectedUser._id);
-        }, 100);
-      }
+      // Sort users by last message time
+      updatedUsers.sort((a, b) => {
+        const aTime = a.lastMessage?.createdAt || new Date(0);
+        const bTime = b.lastMessage?.createdAt || new Date(0);
+        return new Date(bTime) - new Date(aTime);
+      });
+
+      set({ users: updatedUsers });
     });
 
     socket.on("messagesSeen", (data) => {
@@ -116,6 +146,16 @@ export const useChatStore = create((set, get) => ({
   markMessagesAsSeen: async (userId) => {
     try {
       await axiosInstance.put(`/messages/seen/${userId}`);
+
+      // Reset unread count for this user
+      const { users } = get();
+      const updatedUsers = users.map((user) => {
+        if (user._id === userId) {
+          return { ...user, unreadCount: 0 };
+        }
+        return user;
+      });
+      set({ users: updatedUsers });
     } catch (error) {
       console.error("Error marking messages as seen:", error);
     }

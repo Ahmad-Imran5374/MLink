@@ -5,12 +5,46 @@ import { getRecieverSocketId, io } from "../lib/socket.js";
 
 export const getUsersForSidebar = async (req, res) => {
   try {
-    const logginedUser = req.user._id;
-    const filteredUser = await User.find({ _id: { $ne: logginedUser } }).select(
-      "-password"
+    const loggedInUser = req.user._id;
+    const filteredUsers = await User.find({
+      _id: { $ne: loggedInUser },
+    }).select("-password");
+
+    // Get last message for each user
+    const usersWithLastMessage = await Promise.all(
+      filteredUsers.map(async (user) => {
+        const lastMessage = await Message.findOne({
+          $or: [
+            { senderId: loggedInUser, recieverId: user._id },
+            { senderId: user._id, recieverId: loggedInUser },
+          ],
+        })
+          .sort({ createdAt: -1 })
+          .select("text image video senderId createdAt isDeleted");
+
+        // Count unread messages from this user
+        const unreadCount = await Message.countDocuments({
+          senderId: user._id,
+          recieverId: loggedInUser,
+          seen: false,
+        });
+
+        return {
+          ...user.toObject(),
+          lastMessage,
+          unreadCount,
+        };
+      })
     );
 
-    res.status(200).json(filteredUser);
+    // Sort users by last message time (most recent first)
+    usersWithLastMessage.sort((a, b) => {
+      const aTime = a.lastMessage?.createdAt || new Date(0);
+      const bTime = b.lastMessage?.createdAt || new Date(0);
+      return new Date(bTime) - new Date(aTime);
+    });
+
+    res.status(200).json(usersWithLastMessage);
   } catch (error) {
     console.log("Error in getUsersForSidebar: ", error);
     res.status(500).json({ message: "Internal Server Error" });

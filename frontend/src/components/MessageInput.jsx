@@ -46,7 +46,7 @@ function MessageInput() {
 
     // Check file size (max 50MB for videos)
     if (file.size > 50 * 1024 * 1024) {
-      toast.error("Video size should be less than 50MB");
+      toast.error("Video size should be less than or equal to 25MB");
       return;
     }
 
@@ -72,7 +72,12 @@ function MessageInput() {
     e.preventDefault();
     if (!text.trim() && !imagePreview && !videoPreview) return;
 
-    setIsUploading(true);
+    // Only show uploading state for media uploads
+    const hasMedia = imagePreview || videoPreview;
+    if (hasMedia) {
+      setIsUploading(true);
+    }
+
     try {
       await sendMessage({
         text: text.trim(),
@@ -91,7 +96,9 @@ function MessageInput() {
       console.error("Failed to send message: ", error);
       toast.error("Failed to send message");
     } finally {
-      setIsUploading(false);
+      if (hasMedia) {
+        setIsUploading(false);
+      }
     }
   };
 
@@ -178,7 +185,13 @@ function MessageInput() {
       {isUploading && (
         <div className="mb-3 flex items-center gap-2 text-sm text-zinc-400">
           <span className="loading loading-spinner loading-sm"></span>
-          <span>Uploading {videoPreview ? "video" : "image"}...</span>
+          <span>
+            {videoPreview
+              ? "Uploading video..."
+              : imagePreview
+                ? "Uploading image..."
+                : "Sending..."}
+          </span>
         </div>
       )}
 
