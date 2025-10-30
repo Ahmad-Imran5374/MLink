@@ -22,14 +22,7 @@ export const getMessages = async (req, res) => {
     const { id: userToChatId } = req.params;
     const myId = req.user._id;
 
-    const messages = await Message.find({
-      $or: [
-        { senderId: myId, recieverId: userToChatId },
-        { senderId: userToChatId, recieverId: myId },
-      ],
-    });
-
-    // Mark messages from the other user as seen
+    // Mark messages from the other user as seen BEFORE fetching
     await Message.updateMany(
       {
         senderId: userToChatId,
@@ -41,6 +34,16 @@ export const getMessages = async (req, res) => {
         seenAt: new Date(),
       }
     );
+
+    // Fetch messages AFTER updating seen status
+    const messages = await Message.find({
+      $or: [
+        { senderId: myId, recieverId: userToChatId },
+        { senderId: userToChatId, recieverId: myId },
+      ],
+    })
+      .populate("replyTo", "text image video senderId isDeleted")
+      .sort({ createdAt: 1 }); // Sort by creation time
 
     // Emit seen status update to the sender
     const senderSocketId = getRecieverSocketId(userToChatId);
@@ -60,11 +63,13 @@ export const getMessages = async (req, res) => {
 
 export const sendMessage = async (req, res) => {
   try {
-    const { text, image } = req.body;
+    const { text, image, video, replyTo } = req.body;
     const { id: recieverId } = req.params;
     const senderId = req.user._id;
 
     let imageUrl;
+    let videoUrl;
+
     if (image) {
       // Remove data:image/jpeg;base64, prefix if present
       const base64Data = image.replace(/^data:image\/[a-z]+;base64,/, "");
@@ -77,11 +82,25 @@ export const sendMessage = async (req, res) => {
       imageUrl = uploadResponse.url;
     }
 
+    if (video) {
+      // Remove data:video/mp4;base64, prefix if present
+      const base64Data = video.replace(/^data:video\/[a-z0-9]+;base64,/, "");
+
+      const uploadResponse = await imagekit.upload({
+        file: base64Data,
+        fileName: `message_${senderId}_${Date.now()}.mp4`,
+        folder: "/messageVideos",
+      });
+      videoUrl = uploadResponse.url;
+    }
+
     const newMessage = new Message({
       senderId,
       recieverId,
       text,
       image: imageUrl,
+      video: videoUrl,
+      replyTo: replyTo || null,
     });
 
     await newMessage.save();
@@ -132,6 +151,46 @@ export const markMessagesAsSeen = async (req, res) => {
     });
   } catch (error) {
     console.log("Error in markMessagesAsSeen controller: ", error);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+export const deleteMessage = async (req, res) => {
+  try {
+    const { id: messageId } = req.params;
+    const userId = req.user._id;
+
+    const message = await Message.findById(messageId);
+
+    if (!message) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    // Only sender can delete their own message
+    if (message.senderId.toString() !== userId.toString()) {
+      return res
+        .status(403)
+        .json({ message: "You can only delete your own messages" });
+    }
+
+    // Mark message as deleted instead of actually deleting it
+    message.isDeleted = true;
+    message.deletedAt = new Date();
+    message.text = null;
+    message.image = null;
+    message.video = null;
+
+    await message.save();
+
+    // Emit delete event to receiver
+    const receiverSocketId = getRecieverSocketId(message.recieverId);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("messageDeleted", { messageId });
+    }
+
+    res.status(200).json({ message: "Message deleted successfully" });
+  } catch (error) {
+    console.log("Error in deleteMessage controller: ", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };

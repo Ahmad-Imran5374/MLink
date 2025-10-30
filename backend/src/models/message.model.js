@@ -18,6 +18,20 @@ const messageSchema = new mongoose.Schema(
     image: {
       type: String,
     },
+    video: {
+      type: String,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    deletedAt: {
+      type: Date,
+    },
+    replyTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Message",
+    },
     seen: {
       type: Boolean,
       default: false,
