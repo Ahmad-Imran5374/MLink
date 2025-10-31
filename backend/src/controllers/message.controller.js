@@ -56,20 +56,7 @@ export const getMessages = async (req, res) => {
     const { id: userToChatId } = req.params;
     const myId = req.user._id;
 
-    // Mark messages from the other user as seen BEFORE fetching
-    await Message.updateMany(
-      {
-        senderId: userToChatId,
-        recieverId: myId,
-        seen: false,
-      },
-      {
-        seen: true,
-        seenAt: new Date(),
-      }
-    );
-
-    // Fetch messages AFTER updating seen status
+    // Just fetch messages WITHOUT automatically marking as seen
     const messages = await Message.find({
       $or: [
         { senderId: myId, recieverId: userToChatId },
@@ -78,15 +65,6 @@ export const getMessages = async (req, res) => {
     })
       .populate("replyTo", "text image video senderId isDeleted")
       .sort({ createdAt: 1 }); // Sort by creation time
-
-    // Emit seen status update to the sender
-    const senderSocketId = getRecieverSocketId(userToChatId);
-    if (senderSocketId) {
-      io.to(senderSocketId).emit("messagesSeen", {
-        userId: myId,
-        chatId: userToChatId,
-      });
-    }
 
     res.status(200).json(messages);
   } catch (error) {

@@ -48,7 +48,6 @@ function ChatContainer() {
 
   useEffect(() => {
     getMessages(selectedUser._id);
-    markMessagesAsSeen(selectedUser._id);
 
     subscribeToMessages();
 
@@ -58,7 +57,6 @@ function ChatContainer() {
     getMessages,
     subscribeToMessages,
     unsubscribeFromMessages,
-    markMessagesAsSeen,
   ]);
 
   useEffect(() => {
@@ -67,8 +65,11 @@ function ChatContainer() {
     }
 
     // Mark messages as seen when new messages arrive and user is viewing the chat
+    // Add a delay to ensure user has time to actually see the messages
     if (messages.length > 0 && selectedUser && !document.hidden) {
-      markMessagesAsSeen(selectedUser._id);
+      setTimeout(() => {
+        markMessagesAsSeen(selectedUser._id);
+      }, 2000); // 2 second delay
     }
   }, [messages, selectedUser, markMessagesAsSeen]);
 
@@ -76,7 +77,10 @@ function ChatContainer() {
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden && selectedUser) {
-        markMessagesAsSeen(selectedUser._id);
+        // Add a small delay to ensure user has time to actually see the messages
+        setTimeout(() => {
+          markMessagesAsSeen(selectedUser._id);
+        }, 1000);
       }
     };
 
@@ -158,7 +162,7 @@ function ChatContainer() {
                   {/* Message menu - only show for non-deleted messages */}
                   {!message.isDeleted && (
                     <div
-                      className={`absolute top-1 right-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 z-10`}
+                      className={`absolute top-1 right-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 `}
                     >
                       <div className="dropdown dropdown-end">
                         <div
@@ -166,14 +170,14 @@ function ChatContainer() {
                           role="button"
                           className={`flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200 hover:scale-110 ${
                             message.senderId === authUser._id
-                              ? "bg-primary-content/20 hover:bg-primary-content/30 text-primary-content"
-                              : "bg-base-content/80  text-white"
+                              ? "bg-transparent hover:bg-primary-content/30 text-primary-content"
+                              : "bg-transparent text-base-content/80 lg:bg-base-content/80  lg:text-white"
                           }`}
                         >
                           {/* Show 3 dots on mobile, chevron down on desktop */}
                           <MoreVertical
                             size={14}
-                            className="opacity-70 hover:opacity-100 transition-opacity lg:hidden"
+                            className="opacity-70 absolute top-1 -right-1 hover:opacity-100 transition-opacity lg:hidden"
                           />
                           <ChevronDown
                             size={14}
@@ -187,10 +191,10 @@ function ChatContainer() {
                           <li>
                             <button
                               onClick={() => setReplyTo(message)}
-                              className="text-sm py-3 px-4 hover:bg-base-200/70 rounded-xl flex items-center gap-3 transition-all duration-200"
+                              className="text-sm py-3 text-primary px-4 hover:bg-base-200/70 rounded-xl flex items-center gap-3 transition-all duration-200"
                             >
-                              <Reply size={16} className="text-primary" />
-                              <span className="font-medium">Reply</span>
+                              <Reply size={16}  />
+                              <span className=" font-medium">Reply</span>
                             </button>
                           </li>
                           {message.senderId === authUser._id && (
