@@ -154,7 +154,7 @@ function ChatContainer() {
                   } rounded-2xl flex flex-col relative max-w-xs sm:max-w-md shadow-sm transition-all duration-300`}
                   style={{
                     paddingLeft: "10px",
-                    paddingRight: "10px",
+                    paddingRight: "20px",
                     paddingTop: "8px",
                     paddingBottom: "8px",
                   }}
@@ -162,38 +162,38 @@ function ChatContainer() {
                   {/* Message menu - only show for non-deleted messages */}
                   {!message.isDeleted && (
                     <div
-                      className={`absolute top-1 right-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-300 `}
+                      className={`absolute top-2 -right-1.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-all duration-200 z-20`}
                     >
                       <div className="dropdown dropdown-end">
                         <div
                           tabIndex={0}
                           role="button"
-                          className={`flex items-center justify-center w-6 h-6 rounded-full transition-all duration-200 hover:scale-110 ${
+                          className={`flex items-center justify-center w-8 h-8 transition-all duration-200 hover:scale-110 ${
                             message.senderId === authUser._id
-                              ? "bg-transparent hover:bg-primary-content/30 text-primary-content"
-                              : "bg-transparent text-base-content/80 lg:bg-base-content/80  lg:text-white"
+                              ? "text-primary-content drop-shadow-lg"
+                              : "text-base-content drop-shadow-lg"
                           }`}
                         >
                           {/* Show 3 dots on mobile, chevron down on desktop */}
                           <MoreVertical
-                            size={14}
-                            className="opacity-70 absolute top-1 -right-1 hover:opacity-100 transition-opacity lg:hidden"
+                            size={18}
+                            className="opacity-90 hover:opacity-100 transition-opacity lg:hidden"
                           />
                           <ChevronDown
-                            size={14}
-                            className="opacity-70 hover:opacity-100 transition-opacity hidden lg:block"
+                            size={18}
+                            className="opacity-90 hover:opacity-100 transition-opacity hidden lg:block"
                           />
                         </div>
                         <ul
                           tabIndex={0}
-                          className="dropdown-content menu bg-base-100/95 backdrop-blur-md rounded-2xl w-44 p-2 shadow-2xl border border-base-300/50 mt-2"
+                          className="dropdown-content menu bg-base-100/95 backdrop-blur-md rounded-2xl w-44 p-2 shadow-2xl border border-base-300/50 mt-2 z-30"
                         >
                           <li>
                             <button
                               onClick={() => setReplyTo(message)}
                               className="text-sm py-3 text-primary px-4 hover:bg-base-200/70 rounded-xl flex items-center gap-3 transition-all duration-200"
                             >
-                              <Reply size={16}  />
+                              <Reply size={16} />
                               <span className=" font-medium">Reply</span>
                             </button>
                           </li>
@@ -324,7 +324,7 @@ function ChatContainer() {
                           ) : (
                             <video
                               src={message.video}
-                              className="sm:max-w-[250px] rounded-lg w-full cursor-pointer hover:opacity-80 transition-opacity"
+                              className="sm:max-w-[250px] rounded-lg w-full cursor-pointer hover:opacity-80 transition-opacity relative z-10"
                               controls
                               preload="metadata"
                               onClick={() => setPreviewVideo(message.video)}
