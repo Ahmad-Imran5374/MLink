@@ -117,15 +117,18 @@ export const sendMessage = async (req, res) => {
 
     await newMessage.save();
 
-    // Populate the replyTo field before emitting through socket
-    await newMessage.populate("replyTo", "text image video senderId isDeleted");
+    // Populate the replyTo field before emitting through socket and sending response
+    const populatedMessage = await Message.findById(newMessage._id).populate(
+      "replyTo",
+      "text image video senderId isDeleted"
+    );
 
     const recieverSocketId = getRecieverSocketId(recieverId);
     if (recieverSocketId) {
-      io.to(recieverSocketId).emit("newMessage", newMessage);
+      io.to(recieverSocketId).emit("newMessage", populatedMessage);
     }
 
-    res.status(200).json(newMessage);
+    res.status(200).json(populatedMessage);
   } catch (error) {
     console.log("Error in SendMessage controller: ", error);
     res.status(500).json({ message: "Internal Server Error" });

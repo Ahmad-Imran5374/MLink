@@ -1,0 +1,41 @@
+services:
+  # Backend API Service
+  - type: web
+    name: mlink-backend
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install --prefix backend
+    startCommand: npm start --prefix backend
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5001
+      - key: CLIENT_URL
+        sync: false # Set this manually in Render dashboard
+      - key: MONGODB_URI
+        sync: false # Set this manually in Render dashboard
+      - key: JWT_SECRET
+        sync: false # Set this manually in Render dashboard
+      - key: IMAGEKIT_PUBLIC_KEY
+        sync: false # Set this manually in Render dashboard
+      - key: IMAGEKIT_PRIVATE_KEY
+        sync: false # Set this manually in Render dashboard
+      - key: IMAGEKIT_URL_ENDPOINT
+        sync: false # Set this manually in Render dashboard
+      - key: EMAIL
+        sync: false # Set this manually in Render dashboard
+
+  # Frontend Static Site
+  - type: web
+    name: mlink-frontend
+    env: static
+    region: oregon
+    buildCommand: npm install --prefix frontend && npm run build --prefix frontend
+    staticPublishPath: ./frontend/dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

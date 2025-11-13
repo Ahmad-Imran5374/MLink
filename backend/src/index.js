@@ -23,13 +23,21 @@ app.use(express.urlencoded({ limit: "25mb", extended: true }));
 app.use(cookieParser());
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin:
+      process.env.NODE_ENV === "production"
+        ? process.env.CLIENT_URL || true // Allow same-origin if CLIENT_URL not set
+        : "http://localhost:5173",
     credentials: true,
   })
 );
 
 app.use("/api/auth", authRoutes);
 app.use("/api/messages", messageRoutes);
+
+// Health check endpoint for Render
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok", message: "Server is running" });
+});
 
 if (process.env.NODE_ENV === "production") {
   // Serve static files from frontend/dist
