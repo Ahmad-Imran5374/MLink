@@ -117,6 +117,9 @@ export const sendMessage = async (req, res) => {
 
     await newMessage.save();
 
+    // Populate the replyTo field before emitting through socket
+    await newMessage.populate("replyTo", "text image video senderId isDeleted");
+
     const recieverSocketId = getRecieverSocketId(recieverId);
     if (recieverSocketId) {
       io.to(recieverSocketId).emit("newMessage", newMessage);
